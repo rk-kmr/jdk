@@ -241,6 +241,7 @@ bool Compiler::is_intrinsic_supported(vmIntrinsics::ID id) {
 #if defined(X86) || defined(AARCH64) || defined(S390) || defined(RISCV64) || defined(PPC64)
   case vmIntrinsics::_clone:
 #endif
+  case vmIntrinsics::_allocateInstance:
     break;
   case vmIntrinsics::_blackhole:
     break;

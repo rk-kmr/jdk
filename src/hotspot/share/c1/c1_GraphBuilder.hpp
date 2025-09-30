@@ -379,6 +379,7 @@ class GraphBuilder {
   void append_unsafe_get_and_set(ciMethod* callee, bool is_add);
   void append_char_access(ciMethod* callee, bool is_store);
   void append_alloc_array_copy(ciMethod* callee);
+  void append_unsafe_allocate_instance(ciMethod* callee);
 
   void print_inlining(ciMethod* callee, const char* msg, bool success = true);
 

@@ -3624,6 +3624,7 @@ void GraphBuilder::build_graph_for_intrinsic(ciMethod* callee, bool ignore_retur
   case vmIntrinsics::_getCharStringU         : append_char_access(callee, false); return;
   case vmIntrinsics::_putCharStringU         : append_char_access(callee, true); return;
   case vmIntrinsics::_clone                  : append_alloc_array_copy(callee); return;
+  case vmIntrinsics::_allocateInstance       : append_unsafe_allocate_instance(callee); return;
   default:
     break;
   }
@@ -4446,6 +4447,15 @@ void GraphBuilder::append_alloc_array_copy(ciMethod* callee) {
   append_split(array_copy);
   apush(new_array);
   append(new MemBar(lir_membar_storestore));
+}
+
+void GraphBuilder::append_unsafe_allocate_instance(ciMethod* callee) {
+  fprintf(stderr, "[C1] allocateInstance intrinsic called - method: %s\n", callee->name()->as_utf8());
+  fprintf(stderr, "[C1] allocateInstance - arg_size: %d, stack_size: %d\n", 
+          callee->arg_size(), state()->stack_size());
+  
+  // For now, just bail out to regular method call
+  inline_bailout("allocateInstance intrinsic not yet implemented");
 }
 
 void GraphBuilder::print_inlining(ciMethod* callee, const char* msg, bool success) {
