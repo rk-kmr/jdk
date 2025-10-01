@@ -1157,7 +1157,6 @@ void LIR_Assembler::emit_opConvert(LIR_OpConvert* op) {
     default: ShouldNotReachHere();
   }
 }
-
 void LIR_Assembler::emit_alloc_obj(LIR_OpAllocObj* op) {
   if (op->init_check()) {
     __ lea(rscratch1, Address(op->klass()->as_register(), InstanceKlass::init_state_offset()));

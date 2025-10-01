@@ -2936,6 +2936,10 @@ void LIRGenerator::do_Intrinsic(Intrinsic* x) {
     do_blackhole(x);
     break;
 
+  case vmIntrinsics::_allocateInstance:
+    do_allocateInstance(x);
+    break;
+
   default: ShouldNotReachHere(); break;
   }
 }
@@ -3342,6 +3346,66 @@ void LIRGenerator::do_blackhole(Intrinsic *x) {
     vitem.load_item();
     // ...and leave it unused.
   }
+}
+
+void LIRGenerator::do_allocateInstance(Intrinsic *x) {
+  assert(x->number_of_arguments() == 1, "allocateInstance should have exactly 1 argument");
+  assert(!x->has_receiver(), "allocateInstance should be static");
+
+  LIRItem cls(x->argument_at(0), this);
+  cls.load_item();
+
+  // Null check on the mirror; if it traps we restart at the bytecode.
+  CodeEmitInfo* info = nullptr;
+  if (x->state_before() != nullptr && x->state_before()->force_reexecute()) {
+    info = state_for(x, x->state_before());
+    info->set_force_reexecute();
+  } else {
+    info = state_for(x);
+  }
+  __ null_check(cls.result(), info);
+
+  // Architecture-specific registers required by the C1 new-instance stub.
+  LIR_Opr klass_reg;
+  LIR_Opr result_reg;
+#if defined(AARCH64)
+  klass_reg = FrameMap::r3_metadata_opr;
+  result_reg = FrameMap::r0_oop_opr;
+#elif defined(X86)
+  klass_reg = FrameMap::rdx_metadata_opr;
+  result_reg = FrameMap::rax_oop_opr;
+#elif defined(RISCV)
+  klass_reg = FrameMap::r13_metadata_opr;
+  result_reg = FrameMap::r10_oop_opr;
+#elif defined(S390)
+  klass_reg = FrameMap::Z_R11_metadata_opr;
+  result_reg = FrameMap::Z_R2_oop_opr;
+#elif defined(PPC)
+  klass_reg = FrameMap::R4_metadata_opr;
+  result_reg = FrameMap::R3_oop_opr;
+#elif defined(ARM)
+  klass_reg = FrameMap::R3_metadata_opr;
+  result_reg = FrameMap::R0_oop_opr;
+#else
+#error "Unsupported architecture for Unsafe.allocateInstance intrinsic in C1"
+#endif
+
+  // Load InstanceKlass* from the mirror.
+  LIR_Address* klass_addr = new LIR_Address(cls.result(), java_lang_Class::klass_offset(), T_ADDRESS);
+  __ move(klass_addr, klass_reg);
+
+  // Primitive mirrors do not have a backing klass; bail out to the interpreter.
+  CodeStub* null_klass = new DeoptimizeStub(info, Deoptimization::Reason_null_check, Deoptimization::Action_none);
+  __ cmp(lir_cond_equal, klass_reg, LIR_OprFact::metadataConst(nullptr));
+  __ branch(lir_cond_equal, null_klass);
+
+  // Always go through the slow-path stub – fast allocation cannot work with a dynamic klass.
+  CodeStub* slow_path = new NewInstanceStub(klass_reg, result_reg, nullptr, info, StubId::c1_new_instance_id);
+  __ branch(lir_cond_always, slow_path);
+  __ branch_destination(slow_path->continuation());
+
+  LIR_Opr result = rlock_result(x);
+  __ move(result_reg, result);
 }
 
 LIR_Opr LIRGenerator::call_runtime(Value arg1, address entry, ValueType* result_type, CodeEmitInfo* info) {

@@ -152,7 +152,6 @@ void C1_MacroAssembler::initialize_body(Register obj, Register len_in_bytes, int
   }
 }
 
-
 void C1_MacroAssembler::allocate_object(Register obj, Register t1, Register t2, int header_size, int object_size, Register klass, Label& slow_case) {
   assert_different_registers(obj, t1, t2); // XXX really?
   assert(header_size >= 0 && object_size >= header_size, "illegal sizes");
