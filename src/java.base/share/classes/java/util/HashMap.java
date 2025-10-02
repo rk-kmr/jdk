@@ -36,6 +36,7 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import jdk.internal.access.SharedSecrets;
+import jdk.internal.vm.annotation.ForceInline;
 
 /**
  * Hash table based implementation of the {@code Map} interface.  This
@@ -333,6 +334,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * to incorporate impact of the highest bits that would otherwise
      * never be used in index calculations because of table bounds.
      */
+    @ForceInline
     static final int hash(Object key) {
         int h;
         return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
