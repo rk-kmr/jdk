@@ -538,6 +538,7 @@ void LIR_OpVisitState::visit(LIR_Op* op) {
       if (opAllocObj->_opr->is_valid()) {        do_input(opAllocObj->_opr);
                                                  do_temp(opAllocObj->_opr);
                                         }
+      if (opAllocObj->_size->is_valid())         do_input(opAllocObj->_size);
       if (opAllocObj->_tmp1->is_valid())         do_temp(opAllocObj->_tmp1);
       if (opAllocObj->_tmp2->is_valid())         do_temp(opAllocObj->_tmp2);
       if (opAllocObj->_tmp3->is_valid())         do_temp(opAllocObj->_tmp3);
@@ -1333,7 +1334,8 @@ void LIR_List::cmp_reg_mem(LIR_Condition condition, LIR_Opr reg, LIR_Address* ad
 }
 
 void LIR_List::allocate_object(LIR_Opr dst, LIR_Opr t1, LIR_Opr t2, LIR_Opr t3, LIR_Opr t4,
-                               int header_size, int object_size, LIR_Opr klass, bool init_check, CodeStub* stub) {
+                               int header_size, int object_size, LIR_Opr klass, bool init_check, CodeStub* stub,
+                               LIR_Opr size_in_bytes) {
   append(new LIR_OpAllocObj(
                            klass,
                            dst,
@@ -1344,7 +1346,8 @@ void LIR_List::allocate_object(LIR_Opr dst, LIR_Opr t1, LIR_Opr t2, LIR_Opr t3, 
                            header_size,
                            object_size,
                            init_check,
-                           stub));
+                           stub,
+                           size_in_bytes));
 }
 
 void LIR_List::allocate_array(LIR_Opr dst, LIR_Opr len, LIR_Opr t1,LIR_Opr t2, LIR_Opr t3,LIR_Opr t4, BasicType type, LIR_Opr klass, CodeStub* stub, bool zero_array) {
@@ -1936,6 +1939,11 @@ void LIR_OpAllocObj::print_instr(outputStream* out) const {
   tmp2()->print(out);                       out->print(" ");
   tmp3()->print(out);                       out->print(" ");
   tmp4()->print(out);                       out->print(" ");
+  if (size_in_bytes()->is_valid()) {
+    out->print("[size:");
+    size_in_bytes()->print(out);
+    out->print("] ");
+  }
   out->print("[hdr:%d]", header_size()); out->print(" ");
   out->print("[obj:%d]", object_size()); out->print(" ");
   out->print("[lbl:" INTPTR_FORMAT "]", p2i(stub()->entry()));

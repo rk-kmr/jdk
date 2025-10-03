@@ -1165,13 +1165,22 @@ void LIR_Assembler::emit_alloc_obj(LIR_OpAllocObj* op) {
     add_debug_info_for_null_check_here(op->stub()->info());
     __ br(Assembler::NE, *op->stub()->entry());
   }
-  __ allocate_object(op->obj()->as_register(),
-                     op->tmp1()->as_register(),
-                     op->tmp2()->as_register(),
-                     op->header_size(),
-                     op->object_size(),
-                     op->klass()->as_register(),
-                     *op->stub()->entry());
+  if (op->size_in_bytes()->is_valid()) {
+    __ allocate_object(op->obj()->as_register(),
+                       op->tmp1()->as_register(),
+                       op->tmp2()->as_register(),
+                       op->size_in_bytes()->as_register(),
+                       op->klass()->as_register(),
+                       *op->stub()->entry());
+  } else {
+    __ allocate_object(op->obj()->as_register(),
+                       op->tmp1()->as_register(),
+                       op->tmp2()->as_register(),
+                       op->header_size(),
+                       op->object_size(),
+                       op->klass()->as_register(),
+                       *op->stub()->entry());
+  }
   __ bind(*op->stub()->continuation());
 }
 

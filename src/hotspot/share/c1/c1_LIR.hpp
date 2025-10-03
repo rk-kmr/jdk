@@ -1468,6 +1468,7 @@ class LIR_OpAllocObj : public LIR_Op1 {
   LIR_Opr _tmp2;
   LIR_Opr _tmp3;
   LIR_Opr _tmp4;
+  LIR_Opr _size;
   int     _hdr_size;
   int     _obj_size;
   CodeStub* _stub;
@@ -1476,12 +1477,14 @@ class LIR_OpAllocObj : public LIR_Op1 {
  public:
   LIR_OpAllocObj(LIR_Opr klass, LIR_Opr result,
                  LIR_Opr t1, LIR_Opr t2, LIR_Opr t3, LIR_Opr t4,
-                 int hdr_size, int obj_size, bool init_check, CodeStub* stub)
+                 int hdr_size, int obj_size, bool init_check, CodeStub* stub,
+                 LIR_Opr size = LIR_OprFact::illegalOpr)
     : LIR_Op1(lir_alloc_object, klass, result)
     , _tmp1(t1)
     , _tmp2(t2)
     , _tmp3(t3)
     , _tmp4(t4)
+    , _size(size)
     , _hdr_size(hdr_size)
     , _obj_size(obj_size)
     , _stub(stub)
@@ -1493,6 +1496,7 @@ class LIR_OpAllocObj : public LIR_Op1 {
   LIR_Opr tmp2()         const                   { return _tmp2;        }
   LIR_Opr tmp3()         const                   { return _tmp3;        }
   LIR_Opr tmp4()         const                   { return _tmp4;        }
+  LIR_Opr size_in_bytes() const                  { return _size;        }
   int     header_size()  const                   { return _hdr_size;    }
   int     object_size()  const                   { return _obj_size;    }
   bool    init_check()   const                   { return _init_check;  }
@@ -2245,7 +2249,7 @@ class LIR_List: public CompilationResourceObj {
   void irem(LIR_Opr left, LIR_Opr right, LIR_Opr res, LIR_Opr tmp, CodeEmitInfo* info);
   void irem(LIR_Opr left, int   right, LIR_Opr res, LIR_Opr tmp, CodeEmitInfo* info);
 
-  void allocate_object(LIR_Opr dst, LIR_Opr t1, LIR_Opr t2, LIR_Opr t3, LIR_Opr t4, int header_size, int object_size, LIR_Opr klass, bool init_check, CodeStub* stub);
+  void allocate_object(LIR_Opr dst, LIR_Opr t1, LIR_Opr t2, LIR_Opr t3, LIR_Opr t4, int header_size, int object_size, LIR_Opr klass, bool init_check, CodeStub* stub, LIR_Opr size_in_bytes = LIR_OprFact::illegalOpr);
   void allocate_array(LIR_Opr dst, LIR_Opr len, LIR_Opr t1,LIR_Opr t2, LIR_Opr t3,LIR_Opr t4, BasicType type, LIR_Opr klass, CodeStub* stub, bool zero_array = true);
 
   // jump is an unconditional branch

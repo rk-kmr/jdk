@@ -38,6 +38,7 @@
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/c1/barrierSetC1.hpp"
 #include "oops/klass.inline.hpp"
+#include "oops/instanceOop.hpp"
 #include "oops/methodCounters.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
@@ -3399,9 +3400,71 @@ void LIRGenerator::do_allocateInstance(Intrinsic *x) {
   __ cmp(lir_cond_equal, klass_reg, LIR_OprFact::metadataConst(nullptr));
   __ branch(lir_cond_equal, null_klass);
 
-  // Always go through the slow-path stub – fast allocation cannot work with a dynamic klass.
   CodeStub* slow_path = new NewInstanceStub(klass_reg, result_reg, nullptr, info, StubId::c1_new_instance_id);
+
+#if defined(AARCH64) || (defined(X86) && defined(_LP64))
+  if (UseFastNewInstance) {
+    // Layout helper < 0 => array, == 0 => no instance layout. Bail in those cases.
+    LIR_Opr layout = new_register(T_INT);
+    LIR_Address* layout_addr = new LIR_Address(klass_reg, in_bytes(Klass::layout_helper_offset()), T_INT);
+    __ move(layout_addr, layout);
+
+    __ cmp(lir_cond_lessEqual, layout, LIR_OprFact::intConst(Klass::_lh_neutral_value));
+    __ branch(lir_cond_lessEqual, slow_path);
+
+    // Guard against classes that require the runtime slow path.
+    LIR_Opr slow_mask = load_immediate(Klass::_lh_instance_slow_path_bit, T_INT);
+    LIR_Opr slow_bits = new_register(T_INT);
+    __ logical_and(layout, slow_mask, slow_bits);
+    __ cmp(lir_cond_notEqual, slow_bits, LIR_OprFact::intConst(0));
+    __ branch(lir_cond_notEqual, slow_path);
+
+    // Classes with finalizers still need the runtime stub.
+    LIR_Address* flags_addr = new LIR_Address(klass_reg, in_bytes(Klass::misc_flags_offset()), T_BYTE);
+    LIR_Opr flags = new_register(T_INT);
+    __ move(flags_addr, flags);
+    LIR_Opr finalizer_mask = load_immediate(KlassFlags::_misc_has_finalizer, T_INT);
+    LIR_Opr finalizer_bits = new_register(T_INT);
+    __ logical_and(flags, finalizer_mask, finalizer_bits);
+    __ cmp(lir_cond_notEqual, finalizer_bits, LIR_OprFact::intConst(0));
+    __ branch(lir_cond_notEqual, slow_path);
+
+    // Mask away the slow-path bit to recover the size in bytes.
+    LIR_Opr size_mask = load_immediate(~(jint)right_n_bits(LogBytesPerLong), T_INT);
+    LIR_Opr size_in_bytes_int = new_register(T_INT);
+    __ logical_and(layout, size_mask, size_in_bytes_int);
+
+#ifdef _LP64
+    LIR_Opr size_in_bytes = new_register(T_LONG);
+    __ convert(Bytecodes::_i2l, size_in_bytes_int, size_in_bytes);
+#else
+    LIR_Opr size_in_bytes = size_in_bytes_int;
+#endif
+
+    // Provide scratch registers for the inline allocation helpers.
+    LIR_Opr tmp1 = new_register(T_ADDRESS);
+    LIR_Opr tmp2 = new_register(T_ADDRESS);
+
+    const int header_size_words = instanceOopDesc::header_size();
+
+    __ allocate_object(result_reg,
+                       tmp1,
+                       tmp2,
+                       LIR_OprFact::illegalOpr,
+                       LIR_OprFact::illegalOpr,
+                       header_size_words,
+                       header_size_words,
+                       klass_reg,
+                       true,
+                       slow_path,
+                       size_in_bytes);
+  } else {
+    __ branch(lir_cond_always, slow_path);
+  }
+#else
   __ branch(lir_cond_always, slow_path);
+#endif
+
   __ branch_destination(slow_path->continuation());
 
   LIR_Opr result = rlock_result(x);

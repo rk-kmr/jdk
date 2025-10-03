@@ -77,6 +77,7 @@
   // object_size: total size of object in words
   // slow_case  : exit to slow case implementation if fast allocation fails
   void allocate_object(Register obj, Register t1, Register t2, int header_size, int object_size, Register klass, Label& slow_case);
+  void allocate_object(Register obj, Register t1, Register t2, Register size_in_bytes, Register klass, Label& slow_case);
 
   enum {
     max_array_allocation_length = 0x00FFFFFF

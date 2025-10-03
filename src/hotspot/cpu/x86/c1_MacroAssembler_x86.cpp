@@ -133,6 +133,16 @@ void C1_MacroAssembler::allocate_object(Register obj, Register t1, Register t2, 
   initialize_object(obj, klass, noreg, object_size * HeapWordSize, t1, t2, UseTLAB);
 }
 
+void C1_MacroAssembler::allocate_object(Register obj, Register t1, Register t2, Register size_in_bytes, Register klass, Label& slow_case) {
+  assert(obj == rax, "obj must be in rax, for cmpxchg");
+  assert(size_in_bytes != noreg, "size register must be provided");
+  assert_different_registers(obj, klass, size_in_bytes, t1, t2);
+
+  try_allocate(obj, size_in_bytes, 0, t1, t2, slow_case);
+
+  initialize_object(obj, klass, size_in_bytes, 0, t1, t2, UseTLAB);
+}
+
 void C1_MacroAssembler::initialize_object(Register obj, Register klass, Register var_size_in_bytes, int con_size_in_bytes, Register t1, Register t2, bool is_tlab_allocated) {
   assert((con_size_in_bytes & MinObjAlignmentInBytesMask) == 0,
          "con_size_in_bytes is not multiple of alignment");
