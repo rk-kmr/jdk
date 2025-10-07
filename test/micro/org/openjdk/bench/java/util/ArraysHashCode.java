@@ -58,6 +58,7 @@ public class ArraysHashCode {
     @Param({"1", "10", "100", "10000"})
     private int size;
 
+    private boolean[] booleans;
     private byte[] bytes;
     private char[] chars;
     private short[] shorts;
@@ -71,12 +72,14 @@ public class ArraysHashCode {
     public void setup() throws UnsupportedEncodingException, ClassNotFoundException, NoSuchMethodException, Throwable {
         Random rnd = new Random(42);
 
+        booleans = new boolean[size];
         bytes = new byte[size];
         chars = new char[size];
         shorts = new short[size];
         ints = new int[size];
         for (int i = 0; i < size; i++) {
             int next = rnd.nextInt();
+            booleans[i] = next % 2 == 0;
             bytes[i] = (byte)next;
             chars[i] = (char)next;
             shorts[i] = (short)next;
@@ -101,6 +104,11 @@ public class ArraysHashCode {
                 multiints[i][j] = nextj;
             }
         }
+    }
+
+    @Benchmark
+    public int booleans() throws Throwable {
+        return Arrays.hashCode(booleans);
     }
 
     @Benchmark

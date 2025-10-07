@@ -4448,11 +4448,7 @@ public final class Arrays {
         if (a == null)
             return 0;
 
-        int result = 1;
-        for (boolean element : a)
-            result = 31 * result + Boolean.hashCode(element);
-
-        return result;
+        return ArraysSupport.hashCode(a, 0, a.length, 1);
     }
 
     /**

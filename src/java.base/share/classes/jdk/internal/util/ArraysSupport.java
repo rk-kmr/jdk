@@ -167,6 +167,28 @@ public class ArraysSupport {
     }
 
     /**
+     * Calculates the hash code for the subrange of a boolean array.
+     *
+     * <p> This method does not perform type checks or bounds checks. It is the
+     * responsibility of the caller to perform such checks before calling this
+     * method.
+     *
+     * @param a the array
+     * @param fromIndex the first index of the subrange of the array
+     * @param length the number of elements in the subrange
+     * @param initialValue the initial hash value, typically 0 or 1
+     *
+     * @return the calculated hash value
+     */
+    public static int hashCode(boolean[] a, int fromIndex, int length, int initialValue) {
+        return switch (length) {
+            case 0 -> initialValue;
+            case 1 -> 31 + (a[fromIndex] == true ? 1231 : 1237);
+            default -> vectorizedHashCode(a, fromIndex, length, initialValue, T_BOOLEAN);
+        };
+    }
+
+    /**
      * Calculates the hash code for the subrange of an integer array.
      *
      * <p> This method does not perform type checks or bounds checks. It is the
@@ -362,7 +384,10 @@ public class ArraysSupport {
     private static int vectorizedHashCode(Object array, int fromIndex, int length, int initialValue,
                                           int basicType) {
         return switch (basicType) {
-            case T_BOOLEAN -> unsignedHashCode(initialValue, (byte[]) array, fromIndex, length);
+            case T_BOOLEAN ->
+                    array instanceof boolean[]
+                    ? unsignedHashCode(initialValue, (boolean[]) array, fromIndex, length)
+                    : unsignedHashCode(initialValue, (byte[]) array, fromIndex, length);
             case T_CHAR -> array instanceof byte[]
                     ? utf16hashCode(initialValue, (byte[]) array, fromIndex, length)
                     : hashCode(initialValue, (char[]) array, fromIndex, length);
@@ -373,10 +398,18 @@ public class ArraysSupport {
         };
     }
 
+    private static int unsignedHashCode(int result, boolean[] a, int fromIndex, int length) {
+        int end = fromIndex + length;
+        for (int i = fromIndex; i < end; i++) {
+            result = 31 * result + (a[fromIndex] == true ? 1231 : 1237);
+        }
+        return result;
+    }
+
     private static int unsignedHashCode(int result, byte[] a, int fromIndex, int length) {
         int end = fromIndex + length;
         for (int i = fromIndex; i < end; i++) {
-            result = 31 * result + Byte.toUnsignedInt(a[i]);
+            result = 31 * result + (a[i] & 0xff);
         }
         return result;
     }
